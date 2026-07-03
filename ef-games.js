@@ -21,7 +21,7 @@
         s.ratingCoins = (s.ratingCoins||0) + rating;
         localStorage.setItem('ef_state_v1', JSON.stringify(s));
         app.save();
-        this.showModal('🎉 Награда!', `+${coins} монет ��агазина\n+${rating} рейтинг очков`);
+        this.showModal('🎉 Награда!', `+${coins} монет магазина\n+${rating} рейтинг очков`);
       } catch(e) { console.warn('award failed', e) }
     },
 
@@ -819,15 +819,22 @@
                   gameState.board[nr][nc] = gameState.board[r][c];
                   gameState.board[r][c] = null;
 
-                  const playerAlive = false;
+                  // Проверка наличия короля игрока
+                  let playerKingExists = false;
                   for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
-                      if (gameState.board[i][j] === '♔') return;
+                      if (gameState.board[i][j] === '♔') {
+                        playerKingExists = true;
+                        break;
+                      }
                     }
+                    if (playerKingExists) break;
                   }
                   
-                  gameState.gameOver = true;
-                  resultDiv.innerHTML = '<strong style="color: red;">💔 Вы проиграли! Ваш король в мате!</strong>';
+                  if (!playerKingExists) {
+                    gameState.gameOver = true;
+                    resultDiv.innerHTML = '<strong style="color: red;">💔 Вы проиграли! Ваш король в мате!</strong>';
+                  }
                 }
                 gameState.isPlayerTurn = true;
                 waitingForAI = false;
@@ -958,11 +965,11 @@
       }
 
       function isPlayerPiece(piece) {
-        return piece === '⚪' || (gameState.playerDames && gameState.playerDames[piece]);
+        return piece === '⚪' || (piece && piece.includes('⚪'));
       }
 
       function isAIPiece(piece) {
-        return piece === '⚫' || (gameState.aiDames && gameState.aiDames[piece]);
+        return piece === '⚫' || (piece && piece.includes('⚫'));
       }
 
       function getValidMoves(row, col) {
@@ -970,36 +977,47 @@
         const piece = gameState.board[row][col];
         if (!piece) return moves;
 
-        const isDame = piece.includes('♕');
+        const isDame = piece.length > 1;
         const isPlayer = isPlayerPiece(piece);
 
         const directions = isDame ? 
           [[1,1],[1,-1],[-1,1],[-1,-1]] : 
           isPlayer ? [[1,1],[1,-1]] : [[-1,1],[-1,-1]];
 
+        // Обычные ходы на одну клетку
         for (let [dr, dc] of directions) {
           const nr = row + dr, nc = col + dc;
-          if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
-            if (!gameState.board[nr][nc]) {
-              moves.push([nr, nc, false]);
-            }
-            const nr2 = nr + dr, nc2 = nc + dc;
-            if (nr2 >= 0 && nr2 < 8 && nc2 >= 0 && nc2 < 8 && 
-                gameState.board[nr][nc] && 
-                (isPlayer ? isAIPiece(gameState.board[nr][nc]) : isPlayerPiece(gameState.board[nr][nc])) &&
-                !gameState.board[nr2][nc2]) {
-              moves.push([nr2, nc2, true]);
-            }
+          if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && !gameState.board[nr][nc]) {
+            moves.push([nr, nc, false]);
           }
+        }
 
-          if (isDame) {
-            let nr = row + dr * 2, nc = col + dc * 2;
+        // Захваты на две клетки
+        for (let [dr, dc] of directions) {
+          const nr = row + dr, nc = col + dc;
+          const nr2 = row + 2*dr, nc2 = col + 2*dc;
+          
+          if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && 
+              nr2 >= 0 && nr2 < 8 && nc2 >= 0 && nc2 < 8 &&
+              gameState.board[nr][nc] && 
+              (isPlayer ? isAIPiece(gameState.board[nr][nc]) : isPlayerPiece(gameState.board[nr][nc])) &&
+              !gameState.board[nr2][nc2]) {
+            moves.push([nr2, nc2, true]);
+          }
+        }
+
+        // Для дам - многошаговые ходы
+        if (isDame) {
+          for (let [dr, dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
+            let nr = row + dr, nc = col + dc;
             while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
               if (!gameState.board[nr][nc]) {
                 moves.push([nr, nc, false]);
               } else if ((isPlayer ? isAIPiece(gameState.board[nr][nc]) : isPlayerPiece(gameState.board[nr][nc]))) {
-                if (nr + dr >= 0 && nr + dr < 8 && nc + dc >= 0 && nc + dc < 8 && !gameState.board[nr + dr][nc + dc]) {
-                  moves.push([nr + dr, nc + dc, true]);
+                // Попытка захвата
+                const nr2 = nr + dr, nc2 = nc + dc;
+                if (nr2 >= 0 && nr2 < 8 && nc2 >= 0 && nc2 < 8 && !gameState.board[nr2][nc2]) {
+                  moves.push([nr2, nc2, true]);
                 }
                 break;
               } else {
@@ -1021,7 +1039,7 @@
             const piece = gameState.board[r][c];
             if (piece) {
               const isPlayer = isPlayerPiece(piece);
-              const isDame = piece.includes('♕');
+              const isDame = piece.length > 1;
               const value = isDame ? 5 : 1;
               const advancement = isPlayer ? r : (7 - r);
               score += isPlayer ? (value + advancement * 0.1) : -(value + advancement * 0.1);
@@ -1198,6 +1216,7 @@
               gameState.board[captureRow][captureCol] = null;
             }
 
+            // Превращение в дамку
             if ((isPlayerPiece(gameState.board[row][col]) && row === 7) ||
                 (isAIPiece(gameState.board[row][col]) && row === 0)) {
               gameState.board[row][col] += '♕';
@@ -1222,6 +1241,7 @@
                   gameState.board[captureRow][captureCol] = null;
                 }
 
+                // Превращение в дамку
                 if ((isPlayerPiece(gameState.board[nr][nc]) && nr === 7) ||
                     (isAIPiece(gameState.board[nr][nc]) && nr === 0)) {
                   gameState.board[nr][nc] += '♕';
