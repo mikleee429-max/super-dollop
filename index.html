@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игры разума - Мини-игры</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; display:flex; justify-content:center; align-items:center }
+        
+        /* Theme variables */
+        :root {
+            --theme: 'light';
+            --bg-primary: #fff;
+            --bg-secondary: #f5f7fa;
+            --text-primary: #333;
+            --text-secondary: #999;
+            --border-color: #eee;
+            --header-gradient: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+        }
+        
+        body.dark-theme {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #999;
+            --border-color: #333;
+        }
+        
+        body.colorful-theme {
+            --bg-primary: #fff;
+            --bg-secondary: #faf9f6;
+            --text-primary: #333;
+            --text-secondary: #999;
+            --border-color: #eee;
+        }
+        
+        #app { width:100%; max-width:500px; height:100vh; background:var(--bg-primary); position:relative; overflow:hidden; box-shadow:0 0 30px rgba(0,0,0,.3) }
+        .container { width:100%; height:100%; position:relative; overflow-y:auto; scroll-behavior:smooth }
+        .screen { display:none; width:100%; min-height:100vh; padding-bottom:20px }
+        .screen.active { display:block }
+        
+        /* Colorful theme animated background */
+        body.colorful-theme #app {
+            background: linear-gradient(-45deg, #ff0080, #ff8c00, #40e0d0, #ff006e, #8338ec, #3a86ff, #fb5607);
+            background-size: 600% 600%;
+            animation: colorful-gradient 15s ease infinite;
+            position: relative;
+        }
+        
+        @keyframes colorful-gradient {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 50% 100%; }
+            50% { background-position: 100% 50%; }
+            75% { background-position: 50% 0%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        body.colorful-theme #app::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(255, 0, 128, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255, 140, 0, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(64, 224, 208, 0.15) 0%, transparent 50%);
+            animation: glow-shift 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes glow-shift {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .header { position:sticky; top:0; background:var(--header-gradient); color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; z-index:100; gap:10px }
+        .back-btn { background:rgba(255,255,255,.2); border:none; color:white; font-size:24px; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .3s }
+        .back-btn:hover { background:rgba(255,255,255,.3) }
+        .back-btn.hidden { display:none }
+        .header-title { font-size:20px; font-weight:bold; flex:1; text-align:center }
+        .header-info { display:flex; gap:15px; align-items:center }
+        .coin-display { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.2); padding:5px 10px; border-radius:20px; font-size:12px; color:white }
+        
+        /* Main menu layout */
+        .main-menu { background:var(--bg-secondary); padding:20px; min-height:calc(100vh - 60px) }
+        .menu-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px }
+        .menu-tab { background:var(--bg-primary); border-radius:15px; padding:20px; cursor:pointer; transition:all .3s; box-shadow:0 4px 15px rgba(0,0,0,.1); border:2px solid transparent; display:flex; flex-direction:column; align-items:center; justify-content:center }
+        .menu-tab:hover { transform:translateY(-5px); box-shadow:0 6px 20px rgba(0,0,0,.15) }
+        .menu-tab.large { grid-column:span 2; flex-direction:row; gap:15px }
+        .menu-tab.games-btn { background:linear-gradient(90deg, #ff0000, #ff7a00, #ffeb00, #00b050, #0074ff, #4b0082, #9a00ff); background-size:400% 400%; animation:gradient-shift 3s linear infinite }
+        @keyframes gradient-shift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        .menu-tab.games-btn .label { color:white; text-shadow: 0 2px 4px rgba(0,0,0,0.3) }
+        .menu-tab .icon { font-size:40px; margin-bottom:10px }
+        .menu-tab.large .icon { font-size:50px; margin-bottom:0 }
+        .menu-tab .label { font-size:14px; font-weight:bold; color:var(--text-primary) }
+        .menu-tab.large .label { font-size:18px }
+        
+        .games-section-title { font-size:20px; font-weight:bold; color:var(--text-primary); margin:20px 0 15px 0 }
+        
+        /* Shop */
+        .shop-content { padding:20px }
+        .shop-tabs { display:flex; gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:10px }
+        .shop-tab { background:var(--bg-primary); border:2px solid var(--border-color); padding:10px 15px; border-radius:20px; cursor:pointer; white-space:nowrap; transition:all .3s; font-size:14px }
+        .shop-tab.active { background:var(--header-gradient); color:white; border-color:#667eea }
+        .shop-items { display:grid; grid-template-columns:1fr; gap:15px }
+        .shop-item { background:var(--bg-primary); padding:15px; border-radius:15px; display:flex; gap:15px; align-items:center; border:2px solid var(--border-color) }
+        .item-icon { font-size:40px; width:60px; height:60px; display:flex; align-items:center; justify-content:center; background:var(--header-gradient); border-radius:10px; color:white }
+        .item-preview { width:100px; height:48px; border-radius:8px; border:1px solid rgba(0,0,0,.06); box-shadow:inset 0 1px 0 rgba(255,255,255,.6) }
+        .item-info { flex:1 }
+        .item-name { font-size:16px; font-weight:bold; color:var(--text-primary) }
+        .item-desc { font-size:12px; color:var(--text-secondary); margin-top:5px }
+        .item-price { display:flex; align-items:center; gap:5px; font-weight:bold; color:#667eea }
+        .buy-btn { background:var(--header-gradient); color:white; border:none; padding:10px 15px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:bold; transition:all .3s }
+        .buy-btn:active { transform:scale(.95) }
+        .btn-secondary { background:#f3f4f6; color:#333 }
+        .btn-danger { background:#dc2626; color:white }
+        .btn-danger:hover { background:#b91c1c }
+        .tag-active { background:#e6fffa; color:#059669; padding:6px 10px; border-radius:999px; font-weight:600 }
+        
+        /* Backgrounds */
+        .bg-preview { width:100%; height:48px; border-radius:8px; display:block }
+        .bg-red { background: linear-gradient(90deg,#ff7b7b,#ff0000) }
+        .bg-orange { background: linear-gradient(90deg,#ffd59a,#ff8c42) }
+        .bg-yellow { background: linear-gradient(90deg,#fff7a8,#ffd34d) }
+        .bg-green { background: linear-gradient(90deg,#b7f5c6,#2ecc71) }
+        .bg-blue { background: linear-gradient(90deg,#cce7ff,#2ea3ff) }
+        .bg-indigo { background: linear-gradient(90deg,#bda3ff,#6b3cff) }
+        .bg-violet { background: linear-gradient(90deg,#e7c7ff,#c277ff) }
+        .bg-rainbow { background: linear-gradient(90deg, #ff0000, #ff7a00, #ffeb00, #00b050, #0074ff, #4b0082, #9a00ff) }
+        .bg-iridescent { background:linear-gradient(270deg,#ff7ab6,#7ad0ff,#ffd36b,#b8ffb0); background-size:400% 400%; animation:iridescent 6s linear infinite }
+        @keyframes iridescent { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        
+        /* Coming soon */
+        .coming-soon-container { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 60px); text-align:center; padding:20px }
+        .coming-soon-icon { font-size:80px; margin-bottom:20px; animation:bounce 2s infinite }
+        @keyframes bounce { 0%, 100% { transform:translateY(0) } 50% { transform:translateY(-20px) } }
+        .coming-soon-text { font-size:32px; font-weight:bold; color:var(--text-primary); margin-bottom:10px }
+        .coming-soon-desc { font-size:16px; color:var(--text-secondary) }
+        
+        /* Profile */
+        .profile-content { padding:20px }
+        .profile-avatar { width:100px; height:100px; border-radius:50%; background:var(--header-gradient); display:flex; align-items:center; justify-content:center; font-size:50px; margin:0 auto 20px }
+        .profile-name { font-size:24px; font-weight:bold; color:var(--text-primary); text-align:center }
+        .profile-username { font-size:14px; color:var(--text-secondary); text-align:center; margin-top:5px }
+        .profile-id { font-size:12px; color:var(--text-secondary); margin-top:5px; text-align:center; font-family:monospace; word-break:break-all }
+        .profile-stats { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px }
+        .stat-box { background:var(--header-gradient); color:white; padding:20px; border-radius:15px; text-align:center; box-shadow:0 4px 15px rgba(102, 126, 234, 0.3) }
+        .stat-value { font-size:28px; font-weight:bold }
+        .stat-label { font-size:12px; margin-top:5px; opacity:0.9 }
+        
+        /* Edit profile modal */
+        .edit-field { margin-bottom:20px }
+        .edit-label { font-size:14px; font-weight:bold; color:var(--text-primary); margin-bottom:8px; display:block }
+        .edit-input { width:100%; padding:12px; border:2px solid var(--border-color); border-radius:10px; font-size:14px; color:var(--text-primary); background:var(--bg-secondary); transition:all .3s }
+        .edit-input:focus { outline:none; border-color:#667eea; background:var(--bg-primary); box-shadow:0 0 0 3px rgba(102, 126, 234, 0.1) }
+        .edit-input-hint { font-size:12px; color:var(--text-secondary); margin-top:5px }
+        .edit-buttons { display:flex; gap:10px; margin-top:20px }
+        .edit-buttons button { flex:1; padding:12px; border:none; border-radius:10px; cursor:pointer; font-weight:bold; transition:all .3s }
+        .btn-save { background:var(--header-gradient); color:white }
+        .btn-save:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(102, 126, 234, 0.3) }
+        .btn-cancel { background:#f3f4f6; color:#333 }
+        .btn-cancel:hover { background:#e5e7eb }
+        
+        /* Settings */
+        .settings-content { padding:20px }
+        .setting-group { margin-bottom:25px }
+        .setting-label { font-size:14px; font-weight:bold; color:var(--text-primary); margin-bottom:10px; display:block }
+        .theme-buttons { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px }
+        .theme-btn { padding:12px; border:2px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); border-radius:10px; cursor:pointer; font-weight:bold; transition:all .3s }
+        .theme-btn.active { background:var(--header-gradient); color:white; border-color:#667eea; box-shadow:0 4px 12px rgba(102, 126, 234, 0.3) }
+        .reset-button { width:100%; padding:12px; background:#dc2626; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:14px; transition:all .3s }
+        .reset-button:hover { background:#b91c1c; transform:translateY(-2px); box-shadow:0 4px 12px rgba(220, 38, 38, 0.3) }
+        .reset-button:active { transform:scale(.98) }
+        
+        /* Edit profile button */
+        .edit-profile-btn { width:100%; padding:12px; background:#667eea; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:14px; transition:all .3s; margin-top:20px }
+        .edit-profile-btn:hover { background:#5568d3; transform:translateY(-2px); box-shadow:0 4px 12px rgba(102, 126, 234, 0.3) }
+        
+        /* Responsive */
+        @media (max-width:520px) { #app { height:100vh } .menu-grid { grid-template-columns:1fr } .menu-tab.large { grid-column:span 1 } }
+    </style>
+    <link rel="stylesheet" href="./ef-adapt.css">
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <button class="back-btn hidden" id="backBtn">←</button>
+                <div class="header-title" id="headerTitle">Игры разума</div>
+                <div class="header-info">
+                    <div class="coin-display">
+                        <span>💰</span>
+                        <span id="ratingCoins">0</span>
+                    </div>
+                    <div class="coin-display">
+                        <span>🛍️</span>
+                        <span id="shopCoins">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Menu Screen -->
+            <div id="mainMenuScreen" class="screen active">
+                <div class="main-menu">
+                    <div class="menu-tab large games-btn" onclick="app.showScreen('gamesScreen')">
+                        <div class="icon">🎮</div>
+                        <div style="flex:1">
+                            <div class="label">Мини-игры</div>
+                        </div>
+                    </div>
+                    
+                    <div class="menu-grid">
+                        <div class="menu-tab" onclick="app.showScreen('profileScreen')">
+                            <div class="icon">👤</div>
+                            <div class="label">Профиль</div>
+                        </div>
+                        <div class="menu-tab" onclick="app.showScreen('settingsScreen')">
+                            <div class="icon">⚙️</div>
+                            <div class="label">Настройки</div>
+                        </div>
+                    </div>
+                    
+                    <div class="menu-grid">
+                        <div class="menu-tab" onclick="app.showComingSoon('ПВП')">
+                            <div class="icon">⚔️</div>
+                            <div class="label">ПВП</div>
+                        </div>
+                        <div class="menu-tab" onclick="app.showScreen('ratingsScreen')">
+                            <div class="icon">🏆</div>
+                            <div class="label">Рейтинги</div>
+                        </div>
+                        <div class="menu-tab" onclick="app.showComingSoon('Турниры')">
+                            <div class="icon">🎪</div>
+                            <div class="label">Турниры</div>
+                        </div>
+                        <div class="menu-tab" onclick="app.showScreen('shopScreen')">
+                            <div class="icon">🛍️</div>
+                            <div class="label">Магазин</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Games Screen -->
+            <div id="gamesScreen" class="screen">
+                <div id="gamesContent" style="padding:20px"></div>
+            </div>
+
+            <!-- Profile Screen -->
+            <div id="profileScreen" class="screen">
+                <div class="profile-content">
+                    <div class="profile-avatar">👤</div>
+                    <div class="profile-name" id="profileName">Игрок</div>
+                    <div class="profile-username" id="profileUsername">@player</div>
+                    <div class="profile-id" id="profileId">ID: player-0001</div>
+                    <div class="profile-stats">
+                        <div class="stat-box">
+                            <div class="stat-value" id="profileRating">0</div>
+                            <div class="stat-label">Общий рейтинг</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="profileCoins">0</div>
+                            <div class="stat-label">Коины</div>
+                        </div>
+                    </div>
+                    <button class="edit-profile-btn" onclick="app.showEditProfileModal()">✏️ Редактировать профиль</button>
+                </div>
+            </div>
+
+            <!-- Ratings Screen -->
+            <div id="ratingsScreen" class="screen">
+                <div class="coming-soon-container">
+                    <div class="coming-soon-icon">🏆</div>
+                    <div class="coming-soon-text">Ждите скоро</div>
+                    <div class="coming-soon-desc">Рейтинги будут доступны вскоре</div>
+                </div>
+            </div>
+
+            <!-- Settings Screen -->
+            <div id="settingsScreen" class="screen">
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <label class="setting-label">Выбор темы:</label>
+                        <div class="theme-buttons">
+                            <button class="theme-btn active" onclick="app.setTheme('light')">☀️ Светлая</button>
+                            <button class="theme-btn" onclick="app.setTheme('dark')">🌙 Тёмная</button>
+                            <button class="theme-btn" onclick="app.setTheme('colorful')">🌈 Цветная</button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label">Опасная зона:</label>
+                        <button class="reset-button" onclick="app.resetAllAchievements()">⚠️ Обнулить все достижения</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop Screen -->
+            <div id="shopScreen" class="screen">
+                <div class="shop-content">
+                    <div class="shop-tabs" id="shopTabsContainer"></div>
+                    <div class="shop-items" id="shopItemsContainer"></div>
+                </div>
+            </div>
+
+            <!-- Coming Soon Screen -->
+            <div id="comingSoonScreen" class="screen">
+                <div class="coming-soon-container">
+                    <div class="coming-soon-icon">✨</div>
+                    <div class="coming-soon-text" id="comingSoonText">Ждите скоро</div>
+                    <div class="coming-soon-desc">Эта функция скоро будет доступна</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px">
+        <div style="background:var(--bg-primary); color:var(--text-primary); border-radius:20px;padding:30px;max-width:400px;width:100%;text-align:center">
+            <div id="modalIcon" style="font-size:60px;margin-bottom:20px">🎉</div>
+            <div id="modalTitle" style="font-size:24px;font-weight:bold;color:var(--text-primary);margin-bottom:10px">Заголовок</div>
+            <div id="modalText" style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;white-space:pre-wrap">Описание</div>
+            <button onclick="app.closeModal()" style="flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:bold;background:var(--header-gradient);color:white;cursor:pointer;transition:all .3s">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
+        <div style="background:var(--bg-primary); color:var(--text-primary); border-radius:20px;padding:30px;max-width:400px;width:100%;">
+            <div style="font-size:24px;font-weight:bold;margin-bottom:20px">✏️ Редактировать профиль</div>
+            
+            <div class="edit-field">
+                <label class="edit-label">Имя</label>
+                <input type="text" id="editName" class="edit-input" placeholder="Введите ваше имя" maxlength="20">
+                <div class="edit-input-hint">Максимум 20 символов</div>
+            </div>
+
+            <div class="edit-field">
+                <label class="edit-label">Имя пользователя (@username)</label>
+                <div style="display:flex;align-items:center">
+                    <span style="font-weight:bold;margin-right:5px">@</span>
+                    <input type="text" id="editUsername" class="edit-input" placeholder="username" maxlength="15" style="flex:1">
+                </div>
+                <div class="edit-input-hint">Латиница, цифры, подчеркивание. Максимум 15 символов</div>
+            </div>
+
+            <div class="edit-field">
+                <label class="edit-label">ID</label>
+                <input type="text" id="editId" class="edit-input" placeholder="Введите ID" maxlength="20">
+                <div class="edit-input-hint">Уникальный идентификатор</div>
+            </div>
+
+            <div class="edit-buttons">
+                <button class="btn-save" onclick="app.saveProfileChanges()">💾 Сохранить</button>
+                <button class="btn-cancel" onclick="app.closeEditProfileModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            state: {
+                shopCoins: 0,
+                ratingCoins: 0,
+                owned: { skins: [], backgrounds: [] },
+                active: { skin: null, background: null },
+                theme: 'light',
+                profile: {
+                    name: 'Игрок',
+                    username: 'player',
+                    id: 'player-0001'
+                }
+            },
+
+            shop: {
+                skins: [
+                    { id: 'fire', name: 'Огненная', icon: '🔥', price: 50, desc: 'Пылающий огненный заряд' },
+                    { id: 'crystal', name: 'Хрустальная', icon: '❄️', price: 100, desc: 'Ледяной хрустальный снаряд' },
+                    { id: 'toxic', name: 'Токсичная', icon: '☣️', price: 150, desc: 'Ядовитая зелёная бомба' },
+                    { id: 'gold', name: 'Золотая', icon: '🥇', price: 200, desc: 'Роскошный золотой снаряд' }
+                ],
+                backgrounds: [
+                    { id: 'bg_red', name: 'Красный', price: 30, style: 'linear-gradient(90deg,#ff7b7b,#ff0000)', previewClass: 'bg-red' },
+                    { id: 'bg_orange', name: 'Оранжевый', price: 30, style: 'linear-gradient(90deg,#ffd59a,#ff8c42)', previewClass: 'bg-orange' },
+                    { id: 'bg_yellow', name: 'Жёлтый', price: 30, style: 'linear-gradient(90deg,#fff7a8,#ffd34d)', previewClass: 'bg-yellow' },
+                    { id: 'bg_green', name: 'Зелёный', price: 30, style: 'linear-gradient(90deg,#b7f5c6,#2ecc71)', previewClass: 'bg-green' },
+                    { id: 'bg_blue', name: 'Синий', price: 30, style: 'linear-gradient(90deg,#cce7ff,#2ea3ff)', previewClass: 'bg-blue' },
+                    { id: 'bg_indigo', name: 'Индиго', price: 30, style: 'linear-gradient(90deg,#bda3ff,#6b3cff)', previewClass: 'bg-indigo' },
+                    { id: 'bg_violet', name: 'Фиолетовый', price: 30, style: 'linear-gradient(90deg,#e7c7ff,#c277ff)', previewClass: 'bg-violet' },
+                    { id: 'bg_rainbow', name: 'Радуга', price: 80, style: 'linear-gradient(90deg,#ff0000,#ff7a00,#ffeb00,#00b050,#0074ff,#4b0082,#9a00ff)', previewClass: 'bg-rainbow' },
+                    { id: 'bg_iridescent', name: 'Переливающийся', price: 500, style: '', previewClass: 'bg-iridescent', premium:true }
+                ]
+            },
+
+            init() {
+                const saved = localStorage.getItem('ef_state_v1');
+                if (saved) {
+                    try { 
+                        const parsed = JSON.parse(saved); 
+                        this.state = Object.assign(this.state, parsed); 
+                    } catch(e){ console.warn('restore failed',e) }
+                }
+                
+                this.setTheme(this.state.theme);
+                this.renderHeader();
+                this.initShopUI();
+                this.applyActiveBackground();
+                this.setupBackButton();
+            },
+
+            save() { 
+                localStorage.setItem('ef_state_v1', JSON.stringify(this.state)); 
+                this.renderHeader(); 
+            },
+
+            renderHeader() {
+                document.getElementById('shopCoins').textContent = this.state.shopCoins;
+                document.getElementById('ratingCoins').textContent = this.state.ratingCoins;
+                document.getElementById('profileCoins').textContent = this.state.shopCoins;
+                document.getElementById('profileRating').textContent = this.state.ratingCoins;
+            },
+
+            showScreen(id) {
+                document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+                const el = document.getElementById(id); 
+                if (el) el.classList.add('active');
+                
+                const backBtn = document.getElementById('backBtn');
+                if (id === 'mainMenuScreen') {
+                    backBtn.classList.add('hidden');
+                } else {
+                    backBtn.classList.remove('hidden');
+                }
+                
+                this.state.currentScreen = id;
+                this.renderHeader();
+                
+                if (id === 'gamesScreen') this.renderGamesScreen();
+                if (id === 'profileScreen') this.renderProfile();
+                if (id === 'settingsScreen') this.updateThemeButtons();
+            },
+
+            setupBackButton() {
+                document.getElementById('backBtn').onclick = () => {
+                    this.showScreen('mainMenuScreen');
+                };
+            },
+
+            renderProfile() {
+                document.getElementById('profileName').textContent = this.state.profile.name;
+                document.getElementById('profileUsername').textContent = '@' + this.state.profile.username;
+                document.getElementById('profileId').textContent = 'ID: ' + this.state.profile.id;
+                document.getElementById('profileCoins').textContent = this.state.shopCoins;
+                document.getElementById('profileRating').textContent = this.state.ratingCoins;
+            },
+
+            showEditProfileModal() {
+                document.getElementById('editName').value = this.state.profile.name;
+                document.getElementById('editUsername').value = this.state.profile.username;
+                document.getElementById('editId').value = this.state.profile.id;
+                document.getElementById('editProfileModal').style.display = 'flex';
+            },
+
+            closeEditProfileModal() {
+                document.getElementById('editProfileModal').style.display = 'none';
+            },
+
+            validateUsername(username) {
+                return /^[a-zA-Z0-9_]+$/.test(username) && username.length > 0;
+            },
+
+            saveProfileChanges() {
+                const name = document.getElementById('editName').value.trim();
+                const username = document.getElementById('editUsername').value.trim();
+                const id = document.getElementById('editId').value.trim();
+
+                if (!name) {
+                    this.showModal('Ошибка', '❌ Введите имя');
+                    return;
+                }
+
+                if (!username) {
+                    this.showModal('Ошибка', '❌ Введите имя пользователя');
+                    return;
+                }
+
+                if (!this.validateUsername(username)) {
+                    this.showModal('Ошибка', '❌ Имя пользователя может содержать только латиницу, цифры и подчеркивание');
+                    return;
+                }
+
+                if (!id) {
+                    this.showModal('Ошибка', '❌ Введите ID');
+                    return;
+                }
+
+                this.state.profile.name = name;
+                this.state.profile.username = username;
+                this.state.profile.id = id;
+                this.save();
+                this.renderProfile();
+                this.closeEditProfileModal();
+                this.showModal('✓ Успешно', 'Профиль обновлён!');
+            },
+
+            renderGamesScreen() {
+                const content = document.getElementById('gamesContent');
+                const games = [
+                    { id: 'tictactoe', name: 'Крестики-нолики', icon: '❌' },
+                    { id: 'minesweeper', name: 'Сапёр', icon: '💣' },
+                    { id: 'chess', name: 'Шахматы', icon: '♟️' },
+                    { id: 'checkers', name: 'Шашки', icon: '⚫' },
+                    { id: 'sudoku', name: 'Судоку', icon: '🔢' },
+                    { id: 'battleship', name: 'Морской бой', icon: '🚢' }
+                ];
+                
+                content.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">' +
+                    games.map(g => `
+                        <div class="menu-tab" onclick="gameEngine.startGame('${g.id}')" style="margin:0;cursor:pointer">
+                            <div class="icon">${g.icon}</div>
+                            <div class="label">${g.name}</div>
+                        </div>
+                    `).join('') +
+                    '</div>';
+            },
+
+            showComingSoon(text) {
+                document.getElementById('comingSoonText').textContent = text;
+                this.showScreen('comingSoonScreen');
+            },
+
+            setTheme(theme) {
+                this.state.theme = theme;
+                document.body.className = theme === 'light' ? '' : theme + '-theme';
+                this.updateThemeButtons();
+                this.save();
+            },
+
+            updateThemeButtons() {
+                document.querySelectorAll('.theme-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                const activeBtn = document.querySelector(`.theme-btn[onclick="app.setTheme('${this.state.theme}')"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            },
+
+            resetAllAchievements() {
+                if (confirm('⚠️ Вы уверены? Это обнулит все коины и достижения!')) {
+                    this.state.shopCoins = 0;
+                    this.state.ratingCoins = 0;
+                    this.state.owned = { skins: [], backgrounds: [] };
+                    this.state.active = { skin: null, background: null };
+                    this.save();
+                    this.showModal('✓ Успешно', 'Все достижения обнулены!');
+                }
+            },
+
+            initShopUI() {
+                const tabs = [ { id:'skins', label:'Скины' }, { id:'backgrounds', label:'Фоны' }, { id:'market', label:'Рынок' } ];
+                const tabsContainer = document.getElementById('shopTabsContainer'); 
+                tabsContainer.innerHTML='';
+                tabs.forEach(t => {
+                    const b = document.createElement('button'); 
+                    b.className='shop-tab'+(t.id==='skins'? ' active':''); 
+                    b.textContent=t.label; 
+                    b.onclick=()=>{
+                        document.querySelectorAll('.shop-tab').forEach(x=>x.classList.remove('active'));
+                        b.classList.add('active');
+                        this.renderShopItems(t.id);
+                    };
+                    tabsContainer.appendChild(b);
+                });
+                this.renderShopItems('skins');
+            },
+
+            renderShopItems(category) {
+                const container = document.getElementById('shopItemsContainer'); 
+                container.innerHTML='';
+                if (category==='skins'){
+                    this.shop.skins.forEach(item => {
+                        const node = document.createElement('div'); 
+                        node.className='shop-item';
+                        node.innerHTML = `
+                            <div class="item-icon">${item.icon}</div>
+                            <div class="item-info">
+                                <div class="item-name">${item.name}</div>
+                                <div class="item-desc">${item.desc}</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                                <div class="item-price">${item.price} монет</div>
+                                <div></div>
+                            </div>
+                        `;
+                        const right = node.querySelector('div:last-child');
+                        if (this.state.owned.skins.includes(item.id)){
+                            const tag = document.createElement('div'); 
+                            tag.className='tag-active'; 
+                            tag.textContent = this.state.active.skin===item.id? 'Активен' : 'Куплено'; 
+                            right.appendChild(tag);
+                            const applyBtn = document.createElement('button'); 
+                            applyBtn.className='buy-btn btn-secondary'; 
+                            applyBtn.textContent = this.state.active.skin===item.id? 'Применён' : 'Применить'; 
+                            applyBtn.onclick = ()=> { this.state.active.skin = item.id; this.save(); this.renderShopItems('skins'); };
+                            right.appendChild(applyBtn);
+                        } else {
+                            const buy = document.createElement('button'); 
+                            buy.className='buy-btn'; 
+                            buy.textContent = 'Купить за '+item.price; 
+                            buy.onclick=()=> this.buyItem('skins', item);
+                            right.appendChild(buy);
+                        }
+                        container.appendChild(node);
+                    });
+                } else if (category==='backgrounds'){
+                    this.shop.backgrounds.forEach(item => {
+                        const node = document.createElement('div'); 
+                        node.className='shop-item';
+                        node.innerHTML = `
+                            <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                <div class="item-preview ${item.previewClass || ''}" style="width:56px;height:40px;border-radius:8px"></div>
+                            </div>
+                            <div class="item-info">
+                                <div class="item-name">${item.name}</div>
+                                <div class="item-desc">${item.premium? 'Особый фон с анимацией' : 'Фон приложения'}</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                                <div class="item-price">${item.price} монет</div>
+                                <div></div>
+                            </div>
+                        `;
+                        const right = node.querySelector('div:last-child');
+                        if (this.state.owned.backgrounds.includes(item.id)){
+                            const tag = document.createElement('div'); 
+                            tag.className='tag-active'; 
+                            tag.textContent = this.state.active.background===item.id? 'Активен' : 'Куплено'; 
+                            right.appendChild(tag);
+                            const applyBtn = document.createElement('button'); 
+                            applyBtn.className='buy-btn btn-secondary'; 
+                            applyBtn.textContent = this.state.active.background===item.id? 'Применён' : 'Применить'; 
+                            applyBtn.onclick = ()=> { this.state.active.background = item.id; this.applyActiveBackground(); this.renderShopItems('backgrounds'); };
+                            right.appendChild(applyBtn);
+                        } else {
+                            const buy = document.createElement('button'); 
+                            buy.className='buy-btn'; 
+                            buy.textContent = 'Купить за '+item.price; 
+                            buy.onclick=()=> this.buyItem('backgrounds', item);
+                            right.appendChild(buy);
+                        }
+                        container.appendChild(node);
+                    });
+                } else {
+                    container.innerHTML = '<div style="padding:20px;color:var(--text-secondary)">🎪 Рынок скоро откроется</div>';
+                }
+            },
+
+            buyItem(category, item) {
+                if (this.state.shopCoins < item.price) { 
+                    this.showModal('Ошибка','Недостаточно коинов'); 
+                    return;
+                }
+                this.state.shopCoins -= item.price; 
+                this.state.owned[category].push(item.id);
+                if (category==='backgrounds' && !this.state.active.background){ 
+                    this.state.active.background = item.id; 
+                    this.applyActiveBackground();
+                }
+                this.save(); 
+                this.renderShopItems(category);
+                this.showModal('Успех', 'Покупка выполнена');
+            },
+
+            applyActiveBackground() {
+                const activeId = this.state.active.background;
+                const appEl = document.getElementById('app');
+                appEl.style.background='';
+                const item = this.shop.backgrounds.find(b=>b.id===activeId);
+                if (item){
+                    if (item.id === 'bg_iridescent'){
+                        document.body.classList.add('iridescent-applied');
+                        appEl.style.background='linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%)';
+                    } else {
+                        document.body.classList.remove('iridescent-applied');
+                        appEl.style.background = item.style || '';
+                    }
+                } else {
+                    document.body.classList.remove('iridescent-applied');
+                    appEl.style.background='';
+                }
+                this.save();
+            },
+
+            showModal(title, text) {
+                document.getElementById('modalTitle').textContent = title;
+                document.getElementById('modalText').textContent = text;
+                document.getElementById('modal').style.display='flex';
+            },
+
+            closeModal() { 
+                document.getElementById('modal').style.display='none';
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', ()=> app.init());
+        window.app = app;
+    </script>
+
+    <script src="./ef-games.js" defer></script>
+</body>
+</html>
